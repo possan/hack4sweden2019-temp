@@ -101,272 +101,43 @@
             var targetVolume = 0;
             var deltaVolume = 0;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-			class HitTestExample extends XRExampleBase {
-				constructor(domElement){
-					super(domElement, false)
-
-					// A message at the bottom of the screen that shows whether a surface has been found
-					this._messageEl = document.createElement('div')
-					this.el.appendChild(this._messageEl)
-					this._messageEl.style.position = 'absolute'
-					this._messageEl.style.bottom = '10px'
-					this._messageEl.style.left = '10px'
-					this._messageEl.style.color = 'white'
-					this._messageEl.style['font-size'] = '16px'
-
-					this._tapEventData = [ 0.5, 0.5 ];
-					this._hitAnchorOffset = null;
-                    this.el.addEventListener('touchstart', this._onTouchStart.bind(this), false)
-
-
-
-                    this.findingfloor = true;
-                }
-
-                setVolume(v) {
-                    // From: http://www.umsl.edu/~biofuels/Energy%20Meter%20labs/How%20much%20volume%20does%20a%20kg%20of%20CO2%20occupy.pdf
-                    // Roughly; 1kg => 0.556cm2
-                    var d = v * 0.556 / 1;
-                    var s = 5; // Math.ceil(v / );
-                    targetVolume = d;
-
-                    // this.volume.geometry.dispose();
-                    // this.volume2.geometry.dispose();
-
-                    // // this.volume.geometry = new THREE.BoxGeometry(d, d, d, s, s, s);
-                    // // this.volume.matrix.setPosition( new THREE.Vector3(0, d/2, d/2) );
-
-                    // const OFFSET = 0.01;
-                    // d += OFFSET;
-
-                    // this.volume2.geometry = new THREE.BoxGeometry(d, d, d, s, s, s);
-                    // this.volume2.matrix.setPosition( new THREE.Vector3(0, d/2 + OFFSET, d/2) );
-
-                    // this.volume.matrixAutoUpdate = false;
-                    // this.volume2.matrixAutoUpdate = false;
-
-                }
-
-				// Called during construction to allow the app to populate this.scene
-				initializeScene(){
-					// Add a reticle at the scene
-                    /*this.reticle = new THREE.Mesh(
-                        new THREE.CubeGeometry(0.1, 0.1, 0.1, 30, 30, 30),
-                        new THREE.MeshBasicMaterial({ color: '#DDFFDD' })
-                    )*/
-
-                    this.reticleParent = new THREE.Object3D();
-
-                    this.floorPosition = new THREE.Object3D();
-
-                    this.volume2 = new THREE.Mesh(
-                        new THREE.BoxGeometry(1.005, 1.005, 1.005, 10, 10, 10),
-						new THREE.MeshBasicMaterial({ color: '#ffffff', wireframe: true })
-					);
-
-                    this.volume = new THREE.Mesh(
-                        new THREE.BoxGeometry(1.0, 1.0, 1.0, 10, 10, 10),
-						new THREE.MeshPhongMaterial({ color: '#888888' })
-                    );
-
-                    this.volumeBase = new THREE.Object3D();
-
-                    this.reticle = new THREE.Mesh(
-                        new THREE.RingGeometry(0.04, 0.05, 36, 64),
-						new THREE.MeshBasicMaterial({ color: '#DDFFDD' })
-                    );
-
-                    this.reticle2 = new THREE.Mesh(
-                        new THREE.RingGeometry(0.39, 0.5, 36, 64),
-						new THREE.MeshBasicMaterial({ color: '#ffffff' })
-                    );
-
-                    window.setvolume = this.setVolume.bind(this);
-                    window.resetfloor = this.resetFloor.bind(this);
-
-					this.reticle.geometry.applyMatrix(new THREE.Matrix4().makeRotationX(THREE.Math.degToRad(-90)))
-					this.reticle.visible = false;
-                    this.reticle2.visible = false;
-                    this.volume.visible = false;
-                    this.volume2.visible = false;
-                    this.reticleParent.add(this.reticle);
-                    this.reticleParent.add(this.reticle2);
-                    this.reticleParent.add(this.floorPosition);
-                    this.floorPosition.add(this.volumeBase);
-                    this.volumeBase.add(this.volume);
-                    this.volumeBase.add(this.volume2);
-					this.scene.add(this.reticleParent);
-
-					// Add a few lights
-					this.scene.add(new THREE.AmbientLight('#888', 0.2))
-					let directionalLight = new THREE.DirectionalLight('#FFF', 0.6)
-					directionalLight.position.set(3, 10, -7);
-                    this.scene.add(directionalLight)
-
-                    this.resetFloor();
-                }
-
-				// updated to use session.hitTest, since that's what WebXR looks like it will use
-				newSession() {
-                    this.scanFloor();
-                }
-
-                scanFloor() {
-					const x = this._tapEventData[0]
-					const y = this._tapEventData[1]
-                    this.session.hitTest(x, y, XRPresentationFrame.HIT_TEST_TYPE_ESTIMATED_HORIZONTAL_PLANE) // HIT_TEST_TYPE_ALL)
-                        .then(this.handleHit.bind(this))
-                        .catch(err => {
-                            console.error('Error in hit test', err)
-                        });
-                }
-
-				handleHit(anchorOffset) {
-					if (anchorOffset) {
-						this._hitAnchorOffset = anchorOffset;
-					}
-
-                    // keep testing!
-					window.setTimeout(() => this.scanFloor(), 0);
-                }
-                
-				// Called once per frame, before render, to give the app a chance to update this.scene
-				updateScene(frame) {
-					if (this._hitAnchorOffset) {
-						this.updateNodeFromAnchorOffset(frame, this.reticle, this._hitAnchorOffset)
-						this.updateNodeFromAnchorOffset(frame, this.reticle2, this._hitAnchorOffset)
-                        this._hitAnchorOffset = null;
-                    }
-
-                    deltaVolume *= 0.8;
-                    deltaVolume += 0.1 * (targetVolume - currentVolume);
-                    currentVolume += 0.7 * deltaVolume;
-
-
-                    // // this.volume.geometry = new THREE.BoxGeometry(d, d, d, s, s, s);
-                    // // this.volume.matrix.setPosition( new THREE.Vector3(0, d/2, d/2) );
-
-                    var d = currentVolume;
-
-                    var m1 = new THREE.Matrix4();
-                    m1.makeTranslation(0, d/2, d/2);
-
-                    var m2 = new THREE.Matrix4();
-                    m2.makeScale(d, d, d);
-                    m1.multiply(m2);
-
-                    // this.volumeBase.matrix.setScale(new THREE.Vector3(d, d, d) );
-                    this.volumeBase.matrix.copy(m1);
-                    this.volumeBase.matrixAutoUpdate = false;
-		            this.volumeBase.updateMatrixWorld(true)
-                }
-
-                resetFloor() {
-                    this.findingfloor = true;
-                    this.reticle.visible = true;
-                    // this.reticle2.visible = true;
-                    this.volume.visible = false;
-                    this.volume2.visible = false;
-                    targetVolume = 0;;
-                    document.getElementById('hint1').className = 'dialog';
-                    document.getElementById('menu1').className = 'dialog hidden';
-                }
-
-                rememberFloorPosition() {
-                    this.findingfloor = false;
-                    this.reticle.visible = true;
-                    // this.reticle2.visible = true;
-                    this.volume.visible = true;
-                    this.volume2.visible = true;
-                    document.getElementById('hint1').className = 'dialog hidden';
-                    document.getElementById('menu1').className = 'dialog';
-                    // this.floorPosition.updateWorldMatrix = false;
-
-                    this.floorPosition.matrix.copy(this.reticle.matrix)
-                    this.floorPosition.matrixAutoUpdate = false
-		            this.floorPosition.updateMatrixWorld(true)
-
-                    // this.floorPosition.matrix.copy(this.reticle.matrix);
-                    // this.volume.matrix.copy(this.reticle.matrix);
-                }
-
-				// Save screen taps as normalized coordinates for use in this.updateScene
-				_onTouchStart(ev) {
-					if (!ev.touches || ev.touches.length === 0) {
-						console.error('No touches on touch event', ev)
-						return
-                    }
-
-                    if (this.findingfloor) {
-                        this.rememberFloorPosition();
-                    }
-				}
-			}
-
-			window.addEventListener('DOMContentLoaded', () => {
-				setTimeout(() => {
-					try {
-						window.pageApp = new HitTestExample(document.getElementById('target'))
-					} catch(e) {
-						console.error('page error', e)
-					}
-				}, 1000)
-            })
-            
-
-
-
 			var camera, scene, renderer;
-			var mesh;
+            var mesh, spinner;
+            var volumevis;
 
             init();
 			animate();
 
             function init() {
 				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 1000 );
-				camera.position.z = 400;
+				camera.position.z = 200;
+                camera.position.y = 100;
 				scene = new THREE.Scene();
 				// var texture = new THREE.TextureLoader().load( 'textures/crate.gif' );
-				var geometry = new THREE.BoxBufferGeometry( 200, 200, 200 );
-				var material = new THREE.MeshBasicMaterial( { } );
-				mesh = new THREE.Mesh( geometry, material );
-				scene.add( mesh );
+				// var geometry = new THREE.BoxBufferGeometry( 200, 200, 200 );
+                // var material = new THREE.MeshBasicMaterial( { } );
+                spinner = new THREE.Object3D();
+				// mesh = new THREE.Mesh( geometry, material );
+				scene.add( spinner );
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
 				document.getElementById('target').appendChild( renderer.domElement );
-				//
-				window.addEventListener( 'resize', onWindowResize, false );
+                window.addEventListener('resize', onWindowResize, false);
+
+                volumevis = visualisation();
+                var root = volumevis.init(scene);
+                spinner.add(root);
+                spinner.position.set(0, 50, 0);
+
+                // Add a few lights
+                scene.add(new THREE.AmbientLight('#888', 0.2))
+                let directionalLight = new THREE.DirectionalLight('#FFF', 0.6)
+                directionalLight.position.set(300, 100, 300);
+                scene.add(directionalLight);
+
+                window.setvolume = volumevis.setVolume.bind(this);
+                volumevis.setVolume(100);
             }
 
             function onWindowResize() {
@@ -377,8 +148,9 @@
 
             function animate() {
 				requestAnimationFrame( animate );
-				mesh.rotation.x += 0.005;
-				mesh.rotation.y += 0.01;
+				// spinner.rotation.x += 0.005;
+                spinner.rotation.y += 0.01;
+                volumevis.update();
 				renderer.render( scene, camera );
             }
 
