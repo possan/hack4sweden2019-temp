@@ -39,7 +39,7 @@ class XRExampleBase {
 		// Create a canvas and context for the session layer
 		this.glCanvas = document.createElement('canvas')
 		this.glContext = this.glCanvas.getContext('webgl')
-		if(this.glContext === null){
+		if(this.glContext === null) {
 			this.showMessage('Could not create a WebGL canvas')
 			throw new Error('Could not create GL context')
 		}
@@ -49,11 +49,13 @@ class XRExampleBase {
 			canvas: this.glCanvas,
 			context: this.glContext,
 			antialias: false,
-			alpha: true
+			premultipliedAlpha: true,
+			alpha: false,
+			stencil: false,
 		})
 		this.renderer.setPixelRatio(1)
-		this.renderer.autoClear = false
-		this.renderer.setClearColor('#000', 0)
+		this.renderer.autoClear = true
+		this.renderer.setClearColor('#000', 0.0)
 
 		this.requestedFloor = false
 		this.floorGroup = new THREE.Group() // This group will eventually be be anchored to the floor (see findFloorAnchor below)
