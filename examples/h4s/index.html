@@ -1,0 +1,317 @@
+<html>
+	<head>
+		<title>H4S</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body, html {
+				padding: 0;
+				margin: 0;
+				overflow: hidden;
+				position: fixed;
+				width: 100%;
+				height: 100vh;
+				-webkit-user-select: none;
+				user-select: none;
+			}
+			#target {
+				width: 100%;
+				height: 100%;
+				position: absolute;
+			}
+			.common-message {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				font-size: 20px;
+			}
+            .dialog.hidden {
+                display: none;
+            }
+            .dialog {
+                position: absolute;
+                right: 0;
+                bottom: 0;
+                padding: 10px;
+                background-color: rgba(255,255,255,0.8);
+                font: 16px Helvetica, Arial;
+                color: #000;
+            }
+            .dialog a {
+                display: block;
+                color: #008;
+            }
+            .dialog a:active {
+                display: block;
+                color: #66f;
+                font-weight: bolD;
+            }
+		</style>
+		<link rel="stylesheet" href="../common.css"/>
+		<script src="../libs/three.min.js"></script>
+<!-- 	
+		<script type="module" src="../../polyfill/XRPolyfill.js"></script>
+		<script nomodule src="../../dist/webxr-polyfill.js"></script>
+ -->		
+ 		<script src="../../dist/webxr-polyfill.js"></script>
+		<script src="../common.js"></script>
+		<script src="./vis.js"></script>
+	</head>
+	<body>
+        <div id="target" />
+        <div id="hint1" class="dialog hidden">
+            Find the floor and tap on the screen
+        </div>
+        <div id="menu1" class="dialog hidden">
+            Show me<br/>
+            <a onclick="setvolume(0.01)">0.01kg CO<sup>2</sup></a>
+            <a onclick="setvolume(0.1)">0.1kg CO<sup>2</sup></a>
+            <a onclick="setvolume(1)">1kg CO<sup>2</sup></a>
+            <a onclick="setvolume(10)">10kg CO<sup>2</sup></a>
+            <a onclick="setvolume(100)">100kg CO<sup>2</sup></a>
+            <a onclick="setvolume(1000)">1tonne CO<sup>2</sup></a>
+            <a onclick="setvolume(10000)">10tonne CO<sup>2</sup></a>
+            <br/>
+            <a onclick="resetfloor()">Reset floor</a>
+        </div>
+		<!-- <div onclick="hideMe(this)" id="description">
+			<h2>Reticle</h2>
+			<h5>(click to dismiss)</h5>
+			<p>Place a reticle on surfaces.</p>
+		</div> -->
+		<script>
+			/*
+			HitTestExample shows how to find surfaces or other features and place content relative to them.
+
+			In a production application, you would not create a separate anchor for every user action because
+			your application would quickly slow down tracking so many anchors. Instead, find an anchor
+			for groups of content that are positioned relative to some surface or other feature.
+			*/
+			var model = new THREE.Matrix4();
+			var tempPos = new THREE.Vector3();
+			var tempQuat = new THREE.Quaternion();
+            var tempScale = new THREE.Vector3();
+
+            var floorPosition = new THREE.Vector3();
+            var floorQuat = new THREE.Quaternion();
+            var floorScale = new THREE.Vector3();
+
+            var currentVolume = 0;
+            var targetVolume = 0;
+            var deltaVolume = 0;
+
+			class HitTestExample extends XRExampleBase {
+				constructor(domElement){
+					super(domElement, false)
+
+					// A message at the bottom of the screen that shows whether a surface has been found
+					this._messageEl = document.createElement('div')
+					this.el.appendChild(this._messageEl)
+					this._messageEl.style.position = 'absolute'
+					this._messageEl.style.bottom = '10px'
+					this._messageEl.style.left = '10px'
+					this._messageEl.style.color = 'white'
+					this._messageEl.style['font-size'] = '16px'
+
+					this._tapEventData = [ 0.5, 0.5 ];
+					this._hitAnchorOffset = null;
+                    this.el.addEventListener('touchstart', this._onTouchStart.bind(this), false)
+
+
+
+                    this.findingfloor = true;
+                }
+
+                setVolume(v) {
+                    // From: http://www.umsl.edu/~biofuels/Energy%20Meter%20labs/How%20much%20volume%20does%20a%20kg%20of%20CO2%20occupy.pdf
+                    // Roughly; 1kg => 0.556cm2
+                    var d = v * 0.556 / 1;
+                    var s = 5; // Math.ceil(v / );
+                    targetVolume = d;
+
+                    // this.volume.geometry.dispose();
+                    // this.volume2.geometry.dispose();
+
+                    // // this.volume.geometry = new THREE.BoxGeometry(d, d, d, s, s, s);
+                    // // this.volume.matrix.setPosition( new THREE.Vector3(0, d/2, d/2) );
+
+                    // const OFFSET = 0.01;
+                    // d += OFFSET;
+
+                    // this.volume2.geometry = new THREE.BoxGeometry(d, d, d, s, s, s);
+                    // this.volume2.matrix.setPosition( new THREE.Vector3(0, d/2 + OFFSET, d/2) );
+
+                    // this.volume.matrixAutoUpdate = false;
+                    // this.volume2.matrixAutoUpdate = false;
+
+                }
+
+				// Called during construction to allow the app to populate this.scene
+				initializeScene(){
+					// Add a reticle at the scene
+                    /*this.reticle = new THREE.Mesh(
+                        new THREE.CubeGeometry(0.1, 0.1, 0.1, 30, 30, 30),
+                        new THREE.MeshBasicMaterial({ color: '#DDFFDD' })
+                    )*/
+
+                    this.reticleParent = new THREE.Object3D();
+
+                    this.floorPosition = new THREE.Object3D();
+
+                    this.volume2 = new THREE.Mesh(
+                        new THREE.BoxGeometry(1.005, 1.005, 1.005, 10, 10, 10),
+						new THREE.MeshBasicMaterial({ color: '#ffffff', wireframe: true })
+					);
+
+                    this.volume = new THREE.Mesh(
+                        new THREE.BoxGeometry(1.0, 1.0, 1.0, 10, 10, 10),
+						new THREE.MeshPhongMaterial({ color: '#888888' })
+                    );
+
+                    this.volumeBase = new THREE.Object3D();
+
+                    this.reticle = new THREE.Mesh(
+                        new THREE.RingGeometry(0.04, 0.05, 36, 64),
+						new THREE.MeshBasicMaterial({ color: '#DDFFDD' })
+                    );
+
+                    this.reticle2 = new THREE.Mesh(
+                        new THREE.RingGeometry(0.39, 0.5, 36, 64),
+						new THREE.MeshBasicMaterial({ color: '#ffffff' })
+                    );
+
+                    window.setvolume = this.setVolume.bind(this);
+                    window.resetfloor = this.resetFloor.bind(this);
+
+					this.reticle.geometry.applyMatrix(new THREE.Matrix4().makeRotationX(THREE.Math.degToRad(-90)))
+					this.reticle.visible = false;
+                    this.reticle2.visible = false;
+                    this.volume.visible = false;
+                    this.volume2.visible = false;
+                    this.reticleParent.add(this.reticle);
+                    this.reticleParent.add(this.reticle2);
+                    this.reticleParent.add(this.floorPosition);
+                    this.floorPosition.add(this.volumeBase);
+                    this.volumeBase.add(this.volume);
+                    this.volumeBase.add(this.volume2);
+					this.scene.add(this.reticleParent);
+
+					// Add a few lights
+					this.scene.add(new THREE.AmbientLight('#888', 0.2))
+					let directionalLight = new THREE.DirectionalLight('#FFF', 0.6)
+					directionalLight.position.set(3, 10, -7);
+                    this.scene.add(directionalLight)
+
+                    this.resetFloor();
+                }
+
+				// updated to use session.hitTest, since that's what WebXR looks like it will use
+				newSession() {
+                    this.scanFloor();
+                }
+
+                scanFloor() {
+					const x = this._tapEventData[0]
+					const y = this._tapEventData[1]
+                    this.session.hitTest(x, y, XRPresentationFrame.HIT_TEST_TYPE_ESTIMATED_HORIZONTAL_PLANE) // HIT_TEST_TYPE_ALL)
+                        .then(this.handleHit.bind(this))
+                        .catch(err => {
+                            console.error('Error in hit test', err)
+                        });
+                }
+
+				handleHit(anchorOffset) {
+					if (anchorOffset) {
+						this._hitAnchorOffset = anchorOffset;
+					}
+
+                    // keep testing!
+					window.setTimeout(() => this.scanFloor(), 0);
+                }
+                
+				// Called once per frame, before render, to give the app a chance to update this.scene
+				updateScene(frame) {
+					if (this._hitAnchorOffset) {
+						this.updateNodeFromAnchorOffset(frame, this.reticle, this._hitAnchorOffset)
+						this.updateNodeFromAnchorOffset(frame, this.reticle2, this._hitAnchorOffset)
+                        this._hitAnchorOffset = null;
+                    }
+
+                    deltaVolume *= 0.8;
+                    deltaVolume += 0.1 * (targetVolume - currentVolume);
+                    currentVolume += 0.7 * deltaVolume;
+
+
+                    // // this.volume.geometry = new THREE.BoxGeometry(d, d, d, s, s, s);
+                    // // this.volume.matrix.setPosition( new THREE.Vector3(0, d/2, d/2) );
+
+                    var d = currentVolume;
+
+                    var m1 = new THREE.Matrix4();
+                    m1.makeTranslation(0, d/2, d/2);
+
+                    var m2 = new THREE.Matrix4();
+                    m2.makeScale(d, d, d);
+                    m1.multiply(m2);
+
+                    // this.volumeBase.matrix.setScale(new THREE.Vector3(d, d, d) );
+                    this.volumeBase.matrix.copy(m1);
+                    this.volumeBase.matrixAutoUpdate = false;
+		            this.volumeBase.updateMatrixWorld(true)
+                }
+
+                resetFloor() {
+                    this.findingfloor = true;
+                    this.reticle.visible = true;
+                    // this.reticle2.visible = true;
+                    this.volume.visible = false;
+                    this.volume2.visible = false;
+                    targetVolume = 0;;
+                    document.getElementById('hint1').className = 'dialog';
+                    document.getElementById('menu1').className = 'dialog hidden';
+                }
+
+                rememberFloorPosition() {
+                    this.findingfloor = false;
+                    this.reticle.visible = true;
+                    // this.reticle2.visible = true;
+                    this.volume.visible = true;
+                    this.volume2.visible = true;
+                    document.getElementById('hint1').className = 'dialog hidden';
+                    document.getElementById('menu1').className = 'dialog';
+                    // this.floorPosition.updateWorldMatrix = false;
+
+                    this.floorPosition.matrix.copy(this.reticle.matrix)
+                    this.floorPosition.matrixAutoUpdate = false
+		            this.floorPosition.updateMatrixWorld(true)
+
+                    // this.floorPosition.matrix.copy(this.reticle.matrix);
+                    // this.volume.matrix.copy(this.reticle.matrix);
+                }
+
+				// Save screen taps as normalized coordinates for use in this.updateScene
+				_onTouchStart(ev) {
+					if (!ev.touches || ev.touches.length === 0) {
+						console.error('No touches on touch event', ev)
+						return
+                    }
+
+                    if (this.findingfloor) {
+                        this.rememberFloorPosition();
+                    }
+				}
+			}
+
+			window.addEventListener('DOMContentLoaded', () => {
+				setTimeout(() => {
+					try {
+						window.pageApp = new HitTestExample(document.getElementById('target'))
+					} catch(e) {
+						console.error('page error', e)
+					}
+				}, 1000)
+			})
+		</script>
+	</body>
+</html>
