@@ -202,7 +202,13 @@ function visualisation() {
         // 1 tonne = 1000 kg = 556 liters = 556 m3 = ~ 8x8x8m
 
         var v = e_volume.current * 0.556;
-        var d = (Math.cbrt(v) / 2.0) / 10.0;
+        var d = (Math.cbrt(v) / 2.0) / 1.0;
+
+
+
+
+
+
 
         var m1 = new THREE.Matrix4();
         m1.makeTranslation(0, d/2, d/2);
