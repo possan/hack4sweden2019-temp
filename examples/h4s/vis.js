@@ -79,6 +79,10 @@ function visualisation() {
         volume3.receiveShadow = true;
         volume4.receiveShadow = true;
 
+        if (!volume.matrix) {
+            return;
+        }
+
         var spritetexture = new THREE.TextureLoader().load( 'target.png' );
         var spritematerial = new THREE.SpriteMaterial({
             map: spritetexture,
@@ -195,9 +199,10 @@ function visualisation() {
         e_target.update();
 
         // convert from kg co2 to mass using normal temperatur density, then square root it to get side length
+        // 1 tonne = 1000 kg = 556 liters = 556 m3 = ~ 8x8x8m
 
-        var volume = e_volume.current * 0.556;
-        var d = Math.cbrt(volume) * 10.0 / 2.0;
+        var v = e_volume.current * 0.556;
+        var d = (Math.cbrt(v) / 2.0) / 10.0;
 
         var m1 = new THREE.Matrix4();
         m1.makeTranslation(0, d/2, d/2);
