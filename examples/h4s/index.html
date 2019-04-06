@@ -265,9 +265,9 @@
                     var commuteCarco2 = commuteCar * 240 * 0.1;
                     var commutePublicco2 = commutePublic * 240 * 0.02;
 
-                    var totalco2 = longflightsco2 + shortflightsco2 + commuteCarco2 + commutePublicco2;
+                    var totalco2 = (longflightsco2 + shortflightsco2 + commuteCarco2 + commutePublicco2);
                     if (totalco2 > 0) {
-                        volumevis.setVolume(totalco2 / 1000);
+                        volumevis.setVolume(totalco2);
                         volumevis.setSplit(
                             longflightsco2 / totalco2,
                             shortflightsco2 / totalco2,

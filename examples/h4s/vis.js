@@ -168,9 +168,7 @@ function visualisation() {
     }
 
     function setVolume(kgco2) {
-        var d = kgco2 * 0.556 / 1;
-        targetVolume = d;
-        e_volume.target = d;
+        e_volume.target = kgco2;
     }
 
     function setSplit(a,b,c,d) {
@@ -180,8 +178,8 @@ function visualisation() {
         e_split4.target = d;
     }
 
-    function setTarget(a) {
-        e_target.target = a;
+    function setTarget(kgco2) {
+        e_target.target = kgco2;
     }
 
     function start() {
@@ -196,7 +194,10 @@ function visualisation() {
         e_split4.update();
         e_target.update();
 
-        var d = e_volume.current; // currentVolume;
+        // convert from kg co2 to mass using normal temperatur density, then square root it to get side length
+
+        var volume = e_volume.current * 0.556;
+        var d = Math.cbrt(volume) * 10.0 / 2.0;
 
         var m1 = new THREE.Matrix4();
         m1.makeTranslation(0, d/2, d/2);
@@ -304,21 +305,26 @@ function visualisation() {
             billboard4.visible = false;
         }
 
-        h = e_target.current;
-        if (h > EPSILON) {
-            m1 = new THREE.Matrix4();
-            m1.makeTranslation(0, h - 0.5, 0);
-            m2 = new THREE.Matrix4();
-            m2.makeScale(1, 0.01, 1);
-            m1.multiply(m2);
+        if (e_volume.current >= e_target.current && e_volume.current > EPSILON) {
+            h = e_target.current / e_volume.current;
+            if (h > EPSILON) {
+                m1 = new THREE.Matrix4();
+                m1.makeTranslation(0, h - 0.5, 0);
+                m2 = new THREE.Matrix4();
+                m2.makeScale(1, 0.01, 1);
+                m1.multiply(m2);
 
-            grid.matrix.copy(m1);
-            grid.matrixAutoUpdate = false;
-            grid.updateMatrixWorld(true)
-            grid.visible = true;
+                grid.matrix.copy(m1);
+                grid.matrixAutoUpdate = false;
+                grid.updateMatrixWorld(true)
+                grid.visible = true;
 
-            targetbillboard.position.set(-0.55, h - 0.5, -0.55);
-            targetbillboard.visible = true;
+                targetbillboard.position.set(-0.55, h - 0.5, -0.55);
+                targetbillboard.visible = true;
+            } else {
+                grid.visible = false;
+                targetbillboard.visible = false;
+            }
         } else {
             grid.visible = false;
             targetbillboard.visible = false;
